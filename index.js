@@ -77,7 +77,12 @@ const scanPlaylist = async (data, segmentHostUrl) => {
     const line = lines[i];
     if (line.match(/\.ts$/)) {
       // we need the segment
-      const segmentFilename = line;
+      const lineData = extractHostnameFilenameFromUrl(line);
+      const segmentFilename = lineData.filename;
+      const segmentUrl =
+        lineData.hostUrl !== ""
+          ? `${lineData.hostUrl}/${segmentFilename}`
+          : `${segmentHostUrl}/${segmentFilename}`;
       // check if file exists
       const segmentFilepath = path.join(tmpDirectory, segmentFilename);
       if (fs.existsSync(segmentFilepath)) {
@@ -86,10 +91,7 @@ const scanPlaylist = async (data, segmentHostUrl) => {
         while (1) {
           try {
             console.log(`downloading ${segmentFilename}`);
-            await download(
-              `${segmentHostUrl}/${segmentFilename}`,
-              segmentFilepath
-            );
+            await download(segmentUrl, segmentFilepath);
             break;
           } catch (e) {
             console.error(e);
@@ -158,6 +160,7 @@ async function collectSegments(stream) {
   // find host and filename from url
   const masterPlaylistData = extractHostnameFilenameFromUrl(url);
   const masterFilename = masterPlaylistData.filename;
+  const host = masterPlaylistData.hostUrl;
 
   const masterFilepath = await download(
     url,
@@ -170,13 +173,16 @@ async function collectSegments(stream) {
 
   let playListFilenameData = extractHostnameFilenameFromUrl(playlistUrl);
   // Extracts host url from playlsit file
-  let playlistHostUrl = playListFilenameData.hostUrl;
+  let playlistHostUrl =
+    playListFilenameData.hostUrl !== ""
+      ? `${playListFilenameData.hostUrl}/${playListFilenameData.filename}`
+      : `${host}/${playlistUrl}`;
   // Extracts playlist name from master file
   const playlistFilename = playListFilenameData.filename;
 
   // download it
   const playlistFilepath = await download(
-    playlistUrl,
+    playlistHostUrl,
     path.join(tmpDirectory, playlistFilename)
   );
   // read file
