@@ -107,15 +107,8 @@ const scanPlaylist = async (data, segmentHostUrl) => {
 async function mergeSegments(command, output) {
   await new Promise((resolve, reject) => {
     exec(command, (error, stdout, stderr) => {
-      const logFilepath = path.join(__dirname, output + ".log");
-      if (error)
-        fs.writeFile(logFilepath, stderr, () => {
-          reject(error);
-        });
-      else
-        fs.writeFile(logFilepath, stdout, () => {
-          resolve();
-        });
+      if (error) reject(stderr);
+      resolve();
     });
   });
 }
@@ -198,20 +191,24 @@ async function collectSegments(stream) {
 }
 
 async function downloadHLS(streams) {
-  for (const stream of streams) {
-    const { output, newPlaylistFilepath } = await collectSegments(stream);
-    console.log(`done writing to ${newPlaylistFilepath}`);
-    const command = `ffmpeg -protocol_whitelist file,http,https,tcp,tls,crypto -i ${newPlaylistFilepath} -c copy "${path.join(
-      __dirname,
-      output
-    )}"`;
-    console.log(`now executing ${command}`);
-    await mergeSegments(command, output);
-    // clean tmp directory
-    if (fs.existsSync(tmpDirectory)) {
-      console.log(`clean ./tmp directory`);
-      await fs.promises.rm(tmpDirectory, { recursive: true });
+  try {
+    for (const stream of streams) {
+      const { output, newPlaylistFilepath } = await collectSegments(stream);
+      console.log(`done writing to ${newPlaylistFilepath}`);
+      const command = `ffmpeg -protocol_whitelist file,http,https,tcp,tls,crypto -i ${newPlaylistFilepath} -c copy "${path.join(
+        __dirname,
+        output
+      )}"`;
+      console.log(`now executing ${command}`);
+      await mergeSegments(command, output);
+      // clean tmp directory
+      if (fs.existsSync(tmpDirectory)) {
+        console.log(`clean ./tmp directory`);
+        await fs.promises.rm(tmpDirectory, { recursive: true });
+      }
     }
+  } catch (error) {
+    throw new Error(error);
   }
 }
 
