@@ -7,7 +7,6 @@ import { exec } from "child_process";
 const __dirname = path.resolve();
 const tmpDirectory = path.join(__dirname, "./tmp/");
 const outDirectory = path.join(__dirname, "./out/");
-const inputFilePath = path.join(__dirname, "input.json");
 
 const download = async (url, filePath) => {
   return await new Promise((resolve, reject) => {
@@ -139,7 +138,7 @@ function validateInputFile(json) {
   return isValide;
 }
 
-function getInputFile() {
+function getInputFile(inputFilePath) {
   if (!fs.existsSync(inputFilePath)) {
     throw new Error(`Input file not found at ${inputFilePath}`);
   }
@@ -204,8 +203,7 @@ async function collectSegments(stream) {
   return { output, newPlaylistFilepath };
 }
 
-(async () => {
-  const { streams } = getInputFile();
+async function downloadHLS(streams) {
   for (const stream of streams) {
     const { output, newPlaylistFilepath } = await collectSegments(stream);
     console.log(`done writing to ${newPlaylistFilepath}`);
@@ -221,4 +219,15 @@ async function collectSegments(stream) {
       await fs.promises.rm(tmpDirectory, { recursive: true });
     }
   }
-})();
+}
+
+const downloadFromConfig = async (configPath) => {
+  const { streams } = getInputFile(configPath);
+  await downloadHLS(streams);
+};
+const downloadFromCLIArgs = async (url, output) => {
+  const streams = [{ url, output }];
+  await downloadHLS(streams);
+};
+
+export { downloadFromCLIArgs, downloadFromConfig };
