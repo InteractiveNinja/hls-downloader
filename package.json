@@ -21,5 +21,8 @@
   "type": "module",
   "devDependencies": {
     "prettier": "^2.7.1"
+  },
+  "dependencies": {
+    "yargs": "^17.5.1"
   }
 }
