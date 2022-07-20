@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Goal: download large streams that use the HTTP Live Streaming (HLS) protocol, without hanging despite subpar internet connections.",
   "main": "cli.js",
+  "bin": "cli.js",
   "scripts": {
     "start": "node cli.js",
     "prettier": "prettier --write ./**/*.js"
