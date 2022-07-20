@@ -6,7 +6,6 @@ import { exec } from "child_process";
 
 const __dirname = path.resolve();
 const tmpDirectory = path.join(__dirname, "./tmp/");
-const outDirectory = path.join(__dirname, "./out/");
 
 const download = async (url, filePath) => {
   return await new Promise((resolve, reject) => {
@@ -108,7 +107,7 @@ const scanPlaylist = async (data, segmentHostUrl) => {
 async function mergeSegments(command, output) {
   await new Promise((resolve, reject) => {
     exec(command, (error, stdout, stderr) => {
-      const logFilepath = path.join(outDirectory, output + ".log");
+      const logFilepath = path.join(__dirname, output + ".log");
       if (error)
         fs.writeFile(logFilepath, stderr, () => {
           reject(error);
@@ -155,11 +154,6 @@ async function createWorkFolders() {
   if (!fs.existsSync(tmpDirectory)) {
     console.log(`create ./tmp directory`);
     await fs.promises.mkdir(tmpDirectory);
-  }
-
-  if (!fs.existsSync(outDirectory)) {
-    console.log(`create ./out directory`);
-    await fs.promises.mkdir(outDirectory);
   }
 }
 
@@ -208,7 +202,7 @@ async function downloadHLS(streams) {
     const { output, newPlaylistFilepath } = await collectSegments(stream);
     console.log(`done writing to ${newPlaylistFilepath}`);
     const command = `ffmpeg -protocol_whitelist file,http,https,tcp,tls,crypto -i ${newPlaylistFilepath} -c copy "${path.join(
-      outDirectory,
+      __dirname,
       output
     )}"`;
     console.log(`now executing ${command}`);
