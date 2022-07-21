@@ -3,9 +3,9 @@ import https from "https";
 import fs from "fs";
 import path from "path";
 import { exec } from "child_process";
-
+import { tmpdir } from "os";
 const __dirname = path.resolve();
-const tmpDirectory = path.join(__dirname, "./tmp/");
+const tmpDirectory = path.join(tmpdir(), "hls/");
 
 const download = async (url, filePath) => {
   return await new Promise((resolve, reject) => {
@@ -193,7 +193,7 @@ async function collectSegments(stream) {
   const newPlaylistData = await scanPlaylist(playlistData, playlistHostUrl);
   const newPlaylistFilepath = await writeFile(
     newPlaylistData,
-    `./tmp/local_${playlistFilename}`
+    path.join(tmpDirectory, `local_${playlistFilename}`)
   );
   return { output, newPlaylistFilepath };
 }
