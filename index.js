@@ -74,6 +74,8 @@ const extractHostnameFilenameFromUrl = (url) => {
  */
 const scanPlaylist = async (data, playlistHostUrl) => {
   const newPlaylistDataLines = [];
+  const segmentFiles = [];
+  let completedFiles = 0;
   const lines = data.split("\n");
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
@@ -87,24 +89,28 @@ const scanPlaylist = async (data, playlistHostUrl) => {
           : `${playlistHostUrl}/${segmentFilename}`;
       // check if file exists
       const segmentFilepath = path.join(tmpDirectory, segmentFilename);
-      if (fs.existsSync(segmentFilepath)) {
-        console.log(`file already exists: ${segmentFilename}`);
-      } else {
-        while (1) {
-          try {
-            console.log(`downloading ${segmentFilename}`);
-            await download(segmentUrl, segmentFilepath);
-            break;
-          } catch (e) {
-            console.error(e);
-          }
-        }
-      }
+      // Queue downloads and show progress of download
+      segmentFiles.push(
+        new Promise(async (resolve) => {
+          await download(segmentUrl, segmentFilepath);
+          completedFiles++;
+          const percentage = (
+            (completedFiles / segmentFiles.length) *
+            100
+          ).toFixed(2);
+          console.clear();
+          console.log(`Downloading Segments, progress: ${percentage}%`);
+
+          resolve();
+        })
+      );
       newPlaylistDataLines.push(segmentFilepath);
     } else {
       newPlaylistDataLines.push(line);
     }
   }
+  // Run multiple downloads
+  await Promise.all([...segmentFiles]);
   return newPlaylistDataLines.join("\n");
 };
 
