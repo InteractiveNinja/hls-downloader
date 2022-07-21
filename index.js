@@ -149,7 +149,7 @@ async function createWorkFolders() {
   if (fs.existsSync(tmpDirectory))
     await fs.promises.rm(tmpDirectory, { recursive: true });
   if (!fs.existsSync(tmpDirectory)) {
-    console.log(`create ./tmp directory`);
+    console.log(`create tmp directory`);
     await fs.promises.mkdir(tmpDirectory);
   }
 }
@@ -211,7 +211,7 @@ async function downloadHLS(streams) {
       await mergeSegments(command, output);
       // clean tmp directory
       if (fs.existsSync(tmpDirectory)) {
-        console.log(`clean ./tmp directory`);
+        console.log(`clean tmp directory`);
         await fs.promises.rm(tmpDirectory, { recursive: true });
       }
     }
