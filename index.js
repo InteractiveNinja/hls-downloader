@@ -4,8 +4,10 @@ import fs from "fs";
 import path from "path";
 import { exec } from "child_process";
 import { tmpdir } from "os";
+import { randomBytes } from "crypto";
 const __dirname = path.resolve();
-const tmpDirectory = path.join(tmpdir(), "hls/");
+const tmpDirHash = randomBytes(5).toString("hex");
+const tmpDirectory = path.join(tmpdir(), `hls${tmpDirHash}/`);
 
 const download = async (url, filePath) => {
   return await new Promise((resolve, reject) => {
