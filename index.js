@@ -8,6 +8,25 @@ import { randomBytes } from "crypto";
 const __dirname = path.resolve();
 const tmpDirHash = randomBytes(5).toString("hex");
 const tmpDirectory = path.join(tmpdir(), `hls${tmpDirHash}/`);
+const DOWNLOAD_RETRIES = 5;
+const downloadWithRetries = async (url, filepath) => {
+  return new Promise(async (res, rej) => {
+    let currentTries = 0;
+    while (currentTries <= DOWNLOAD_RETRIES) {
+      try {
+        await download(url, filepath);
+        break;
+      } catch (error) {
+        console.log(`retrying download for ${filepath} try: ${currentTries}`);
+        currentTries++;
+      }
+    }
+    if (currentTries <= DOWNLOAD_RETRIES) {
+      res();
+    }
+    rej();
+  });
+};
 
 const download = async (url, filePath) => {
   return await new Promise((resolve, reject) => {
@@ -92,7 +111,7 @@ const scanPlaylist = async (data, playlistHostUrl) => {
       // Queue downloads and show progress of download
       segmentFiles.push(
         new Promise(async (resolve) => {
-          await download(segmentUrl, segmentFilepath);
+          await downloadWithRetries(segmentUrl, segmentFilepath);
           completedFiles++;
           const percentage = (
             (completedFiles / segmentFiles.length) *
