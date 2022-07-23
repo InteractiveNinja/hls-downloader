@@ -247,7 +247,7 @@ async function downloadHLS(streams) {
   }
 }
 
-const downloadFromConfig = async (configPath) => {
+const downloadFromBatchFile = async (configPath) => {
   const { streams } = getInputFile(configPath);
   await downloadHLS(streams);
 };
@@ -256,4 +256,4 @@ const downloadFromCLIArgs = async (url, output) => {
   await downloadHLS(streams);
 };
 
-export { downloadFromCLIArgs, downloadFromConfig };
+export { downloadFromCLIArgs, downloadFromBatchFile };
