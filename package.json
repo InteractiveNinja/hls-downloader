@@ -24,6 +24,9 @@
     "prettier": "^2.7.1"
   },
   "dependencies": {
+    "axios": "^0.27.2",
+    "jquery": "^3.6.0",
+    "jsdom": "^20.0.0",
     "yargs": "^17.5.1"
   }
 }
