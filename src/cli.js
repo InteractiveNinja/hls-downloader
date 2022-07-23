@@ -18,7 +18,12 @@ function run() {
     return;
   }
   if (crawlURL && outputPath) {
-    crawl(crawlURL).then((url) => downloadFromCLIArgs(url, outputPath));
+    crawl(crawlURL).then((url) => {
+      if (!url) {
+        throw new Error("No Crawler found");
+      }
+      downloadFromCLIArgs(url, outputPath);
+    });
     return;
   }
   if (batchFile) {
