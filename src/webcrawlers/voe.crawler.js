@@ -19,13 +19,24 @@ async function crawUrl(url) {
   return axios.get(url).then((res) => {
     const { window } = new JSDOM(res.data);
     const $ = jquery(window);
-    const scriptTag = $(
-      "body > div.stream > div.container > div.player-wrapper.mt-2 > div > script:nth-child(6)"
-    ).html();
-    //TODO Better way of searching for the master url with less unsafe index requests
-    return scriptTag
+    let scriptTags = [];
+    // Collect all script tags in website
+    $("script").each(function () {
+      const scriptTag = $(this).html();
+      scriptTags.push(scriptTag);
+    });
+    return scriptTags
+      .join()
       .split("\n")
-      .map((line) => line.trim())[9]
-      .split('"')[3];
+      .map((line) => line.trim()) // trim all lines
+      .join()
+      .split('"') // split to all "
+      .filter((line) => {
+        // find url with finding master file
+        const urlMatch =
+          /[-a-zA-Z0-9@:%_+.~#?&/=]{2,256}\.[a-z]{2,4}\b(\/[-a-zA-Z0-9@:%_+.~#?&/=,]*(\.m3u8))/;
+        return urlMatch.test(line);
+      })
+      .pop();
   });
 }
