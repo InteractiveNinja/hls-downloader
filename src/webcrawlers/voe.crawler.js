@@ -2,7 +2,12 @@ import jquery from "jquery";
 import { JSDOM } from "jsdom";
 import axios from "axios";
 
-export default function voeCrawler(url) {
+/**
+ * Returns Promise
+ * @param url
+ * @returns {Promise<string> | undefined}
+ */
+export default async function voeCrawler(url) {
   const regexPattern = /(https:\/\/audaciousdefaulthouse.com\/[a-zA-Z0-9]*)/;
   const match = regexPattern.test(url);
 
@@ -12,7 +17,7 @@ export default function voeCrawler(url) {
   console.log("Matched Crawler: voe");
   console.log(`Crawling ${url}`);
 
-  return crawUrl(url);
+  return await crawUrl(url);
 }
 
 async function crawUrl(url) {
