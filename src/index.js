@@ -9,6 +9,7 @@ const __dirname = path.resolve();
 const tmpDirHash = randomBytes(5).toString("hex");
 const tmpDirectory = path.join(tmpdir(), `hls${tmpDirHash}/`);
 const DOWNLOAD_RETRIES = 5;
+const DOWNLOAD_CHUNK_SIZE = 20;
 const downloadWithRetries = async (url, filepath) => {
   return new Promise(async (res, rej) => {
     let currentTries = 0;
@@ -17,7 +18,6 @@ const downloadWithRetries = async (url, filepath) => {
         await download(url, filepath);
         break;
       } catch (error) {
-        console.log(`retrying download for ${filepath} try: ${currentTries}`);
         currentTries++;
       }
     }
@@ -86,6 +86,21 @@ const extractHostnameFilenameFromUrl = (url) => {
 };
 
 /**
+ * Cuts array in Chunks
+ * @param arr to be cutted
+ * @param chunkSize how many elements per Chunk
+ * @returns {*[]}
+ */
+function spliceIntoChunks(arr, chunkSize) {
+  const res = [];
+  while (arr.length > 0) {
+    const chunk = arr.splice(0, chunkSize);
+    res.push(chunk);
+  }
+  return res;
+}
+
+/**
  * downloads all segments (.ts files) and returns new m3u8
  * @param data Playlist data from Host
  * @param playlistHostUrl URL which was given to download the playlist
@@ -128,8 +143,15 @@ const scanPlaylist = async (data, playlistHostUrl) => {
       newPlaylistDataLines.push(line);
     }
   }
-  // Run multiple downloads
-  await Promise.all([...segmentFiles]);
+  // Prepare small Chunks for downloading
+  const downloadWorkLoad = spliceIntoChunks(
+    segmentFiles.slice(),
+    DOWNLOAD_CHUNK_SIZE
+  );
+  // Run multiple downloads per chunk size
+  for (let i = 0; i < downloadWorkLoad.length; i++) {
+    await Promise.all([...downloadWorkLoad[i]]);
+  }
   return newPlaylistDataLines.join("\n");
 };
 
