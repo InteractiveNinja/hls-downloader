@@ -24,7 +24,7 @@ const downloadWithRetries = async (url, filepath) => {
     if (currentTries <= DOWNLOAD_RETRIES) {
       res();
     }
-    rej();
+    rej("Download retries exceeded");
   });
 };
 
