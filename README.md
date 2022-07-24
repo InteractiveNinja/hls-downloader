@@ -6,7 +6,7 @@ I forked this tool from [plin0009/hls-downloader](https://github.com/plin0009/hl
 * Queue multiple playlist files with one .json
 * Supports all output video formats as ffmpeg (.mp4, .mov, .avi, .ts, etc)
 * Supported crawling sites:
-  * voe.sx | audaciousdefaulthouse.com
+  * voe.sx | audaciousdefaulthouse.com | vupload
 
 ## To-do
 * Make queueing files more user-friendly (GUI?)
