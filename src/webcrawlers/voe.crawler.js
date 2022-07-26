@@ -9,7 +9,7 @@ import axios from "axios";
  */
 export default async function voeCrawler(url) {
   const regexPattern =
-    /https:\/\/((audaciousdefaulthouse.com)|(voe.sx)|(vupload.com))\/[a-zA-Z0-9\/]*/;
+    /https:\/\/((audaciousdefaulthouse.com)|(launchreliantcleaverriver.com)|(voe.sx)|(vupload.com))\/[a-zA-Z0-9\/]*/;
   const match = regexPattern.test(url);
 
   if (!match) {
