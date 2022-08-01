@@ -1,6 +1,18 @@
 import jquery from "jquery";
 import { JSDOM } from "jsdom";
 import axios from "axios";
+import prompt from "prompt";
+
+const promptSchema = {
+  properties: {
+    isVoe: {
+      pattern: /^[yn]$/,
+      description: "Is this a Voe Link? (y/n)",
+      required: true,
+      default: "n",
+    },
+  },
+};
 
 /**
  * Returns Promise
@@ -8,17 +20,22 @@ import axios from "axios";
  * @returns {Promise<string> | undefined}
  */
 export default async function voeCrawler(url) {
-  const regexPattern =
-    /https:\/\/((audaciousdefaulthouse.com)|(launchreliantcleaverriver.com)|(voe.sx)|(vupload.com))\/[a-zA-Z0-9\/]*/;
+  const regexPattern = /https:\/\/[a-zA-Z\d.]*\/[a-zA-Z\d\/]*/;
   const match = regexPattern.test(url);
-
   if (!match) {
     return undefined;
   }
+  prompt.start();
   console.log("Matched Crawler: voe/vupload");
-  console.log(`Crawling ${url}`);
-
-  return await crawUrl(url);
+  return await prompt
+    .get(promptSchema)
+    .then(({ isVoe }) => {
+      if (isVoe === "n") {
+        return Promise.reject();
+      }
+      return crawUrl(url);
+    })
+    .catch(() => undefined);
 }
 
 async function crawUrl(url) {
