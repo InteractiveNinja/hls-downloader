@@ -9,7 +9,7 @@ const promptSchema = {
       pattern: /^[yn]$/,
       description: "Is this a Voe Link? (y/n)",
       required: true,
-      default: "n",
+      default: "y",
     },
   },
 };
