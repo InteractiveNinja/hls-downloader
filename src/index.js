@@ -8,8 +8,8 @@ import { randomBytes } from "crypto";
 const __dirname = path.resolve();
 const tmpDirHash = randomBytes(5).toString("hex");
 const tmpDirectory = path.join(tmpdir(), `hls${tmpDirHash}/`);
-const DOWNLOAD_RETRIES = 5;
-const DOWNLOAD_CHUNK_SIZE = 20;
+const DOWNLOAD_RETRIES = 10;
+const DOWNLOAD_CHUNK_SIZE = 10;
 const downloadWithRetries = async (url, filepath) => {
   return new Promise(async (res, rej) => {
     let currentTries = 0;
