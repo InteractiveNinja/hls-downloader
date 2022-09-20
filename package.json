@@ -24,6 +24,7 @@
     "prettier": "^2.7.1"
   },
   "dependencies": {
+    "@cantfindkernel/ddos-guard-bypass": "^1.0.6",
     "axios": "^0.27.2",
     "jquery": "^3.6.0",
     "jsdom": "^20.0.0",
