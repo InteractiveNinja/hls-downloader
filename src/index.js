@@ -3,11 +3,30 @@ import https from "https";
 import fs from "fs";
 import path from "path";
 import { exec } from "child_process";
-
+import { tmpdir } from "os";
+import { randomBytes } from "crypto";
 const __dirname = path.resolve();
-const tmpDirectory = path.join(__dirname, "./tmp/");
-const outDirectory = path.join(__dirname, "./out/");
-const inputFilePath = path.join(__dirname, "input.json");
+const tmpDirHash = randomBytes(5).toString("hex");
+const tmpDirectory = path.join(tmpdir(), `hls${tmpDirHash}/`);
+const DOWNLOAD_RETRIES = 10;
+const DOWNLOAD_CHUNK_SIZE = 10;
+const downloadWithRetries = async (url, filepath) => {
+  return new Promise(async (res, rej) => {
+    let currentTries = 0;
+    while (currentTries <= DOWNLOAD_RETRIES) {
+      try {
+        await download(url, filepath);
+        break;
+      } catch (error) {
+        currentTries++;
+      }
+    }
+    if (currentTries <= DOWNLOAD_RETRIES) {
+      res();
+    }
+    rej("Download retries exceeded");
+  });
+};
 
 const download = async (url, filePath) => {
   return await new Promise((resolve, reject) => {
@@ -67,6 +86,21 @@ const extractHostnameFilenameFromUrl = (url) => {
 };
 
 /**
+ * Cuts array in Chunks
+ * @param arr to be cutted
+ * @param chunkSize how many elements per Chunk
+ * @returns {*[]}
+ */
+function spliceIntoChunks(arr, chunkSize) {
+  const res = [];
+  while (arr.length > 0) {
+    const chunk = arr.splice(0, chunkSize);
+    res.push(chunk);
+  }
+  return res;
+}
+
+/**
  * downloads all segments (.ts files) and returns new m3u8
  * @param data Playlist data from Host
  * @param playlistHostUrl URL which was given to download the playlist
@@ -74,6 +108,8 @@ const extractHostnameFilenameFromUrl = (url) => {
  */
 const scanPlaylist = async (data, playlistHostUrl) => {
   const newPlaylistDataLines = [];
+  const segmentFiles = [];
+  let completedFiles = 0;
   const lines = data.split("\n");
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
@@ -87,23 +123,34 @@ const scanPlaylist = async (data, playlistHostUrl) => {
           : `${playlistHostUrl}/${segmentFilename}`;
       // check if file exists
       const segmentFilepath = path.join(tmpDirectory, segmentFilename);
-      if (fs.existsSync(segmentFilepath)) {
-        console.log(`file already exists: ${segmentFilename}`);
-      } else {
-        while (1) {
-          try {
-            console.log(`downloading ${segmentFilename}`);
-            await download(segmentUrl, segmentFilepath);
-            break;
-          } catch (e) {
-            console.error(e);
-          }
-        }
-      }
+      // Queue downloads and show progress of download
+      segmentFiles.push(
+        new Promise(async (resolve) => {
+          await downloadWithRetries(segmentUrl, segmentFilepath);
+          completedFiles++;
+          const percentage = (
+            (completedFiles / segmentFiles.length) *
+            100
+          ).toFixed(2);
+          console.clear();
+          console.log(`Downloading Segments, progress: ${percentage}%`);
+
+          resolve();
+        })
+      );
       newPlaylistDataLines.push(segmentFilepath);
     } else {
       newPlaylistDataLines.push(line);
     }
+  }
+  // Prepare small Chunks for downloading
+  const downloadWorkLoad = spliceIntoChunks(
+    segmentFiles.slice(),
+    DOWNLOAD_CHUNK_SIZE
+  );
+  // Run multiple downloads per chunk size
+  for (let i = 0; i < downloadWorkLoad.length; i++) {
+    await Promise.all([...downloadWorkLoad[i]]);
   }
   return newPlaylistDataLines.join("\n");
 };
@@ -111,15 +158,8 @@ const scanPlaylist = async (data, playlistHostUrl) => {
 async function mergeSegments(command, output) {
   await new Promise((resolve, reject) => {
     exec(command, (error, stdout, stderr) => {
-      const logFilepath = path.join(outDirectory, output + ".log");
-      if (error)
-        fs.writeFile(logFilepath, stderr, () => {
-          reject(error);
-        });
-      else
-        fs.writeFile(logFilepath, stdout, () => {
-          resolve();
-        });
+      if (error) reject(stderr);
+      resolve();
     });
   });
 }
@@ -141,7 +181,7 @@ function validateInputFile(json) {
   return isValide;
 }
 
-function getInputFile() {
+function getInputFile(inputFilePath) {
   if (!fs.existsSync(inputFilePath)) {
     throw new Error(`Input file not found at ${inputFilePath}`);
   }
@@ -155,14 +195,11 @@ function getInputFile() {
 }
 
 async function createWorkFolders() {
+  if (fs.existsSync(tmpDirectory))
+    await fs.promises.rm(tmpDirectory, { recursive: true });
   if (!fs.existsSync(tmpDirectory)) {
-    console.log(`create ./tmp directory`);
+    console.log(`create tmp directory`);
     await fs.promises.mkdir(tmpDirectory);
-  }
-
-  if (!fs.existsSync(outDirectory)) {
-    console.log(`create ./out directory`);
-    await fs.promises.mkdir(outDirectory);
   }
 }
 
@@ -205,26 +242,40 @@ async function collectSegments(stream) {
   const newPlaylistData = await scanPlaylist(playlistData, playlistHostUrl);
   const newPlaylistFilepath = await writeFile(
     newPlaylistData,
-    `./tmp/local_${playlistFilename}`
+    path.join(tmpDirectory, `local_${playlistFilename}`)
   );
   return { output, newPlaylistFilepath };
 }
 
-(async () => {
-  const { streams } = getInputFile();
-  for (const stream of streams) {
-    const { output, newPlaylistFilepath } = await collectSegments(stream);
-    console.log(`done writing to ${newPlaylistFilepath}`);
-    const command = `ffmpeg -protocol_whitelist file,http,https,tcp,tls,crypto -i ${newPlaylistFilepath} -c copy "${path.join(
-      outDirectory,
-      output
-    )}"`;
-    console.log(`now executing ${command}`);
-    await mergeSegments(command, output);
-    // clean tmp directory
-    if (fs.existsSync(tmpDirectory)) {
-      console.log(`clean ./tmp directory`);
-      await fs.promises.rm(tmpDirectory, { recursive: true });
+async function downloadHLS(streams) {
+  try {
+    for (const stream of streams) {
+      const { output, newPlaylistFilepath } = await collectSegments(stream);
+      console.log(`done writing to ${newPlaylistFilepath}`);
+      const command = `ffmpeg -protocol_whitelist file,http,https,tcp,tls,crypto -i ${newPlaylistFilepath} -c copy "${path.join(
+        __dirname,
+        output
+      )}"`;
+      console.log(`now executing ${command}`);
+      await mergeSegments(command, output);
+      // clean tmp directory
+      if (fs.existsSync(tmpDirectory)) {
+        console.log(`clean tmp directory`);
+        await fs.promises.rm(tmpDirectory, { recursive: true });
+      }
     }
+  } catch (error) {
+    throw new Error(error);
   }
-})();
+}
+
+const downloadFromBatchFile = async (configPath) => {
+  const { streams } = getInputFile(configPath);
+  await downloadHLS(streams);
+};
+const downloadFromCLIArgs = async (url, output) => {
+  const streams = [{ url, output }];
+  await downloadHLS(streams);
+};
+
+export { downloadFromCLIArgs, downloadFromBatchFile };
